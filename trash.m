@@ -33,13 +33,16 @@ angulos = linspace(scan{1}.AngleMin, scan{1}.AngleMax, length(scan{1}.Ranges));
 %     pause(1e-5)
 % end
 
-MAX_cylindro = tan(0.4/0.1);
+MAX_cylindro = deg2rad(80);%tan(0.4/0.1);
 auxCylinder = zeros(1,1);
 auxAngCylinder = zeros(1,1);
+justStarted = 1;
 
 
 figure()
-for i=9200:L
+for i=7400:L
+
+
     sprintf("Iteracion: %d", i)
     indicesCilindro = find(SCANCOPY{i}.Ranges >= 0.4123 & SCANCOPY{i}.Ranges <= 0.55);
     
@@ -49,7 +52,7 @@ for i=9200:L
     
     indicesAngCilindro = find(CYLINDER_ANGLES <= MAX_cylindro & CYLINDER_ANGLES >= -MAX_cylindro);
     
-    % CYLINDER_ANGLES y CYLINDER se sobreescriben en cada iteración para
+    % CYLINDER_ANGLES y CYLINDER se sobreescriben en cada iteraciï¿½n para
     % calculos de ECM
     CYLINDER_ANGLES = CYLINDER_ANGLES(indicesAngCilindro);
     CYLINDER = CYLINDER(indicesAngCilindro);
@@ -59,60 +62,63 @@ for i=9200:L
     
 %     sprintf("CANT PUNTOS: %d", length(CYLINDER_ANGLES))
 %     sprintf("CANT PUNTOS AUX: %d", length(auxAngCylinder))
-    maxAng = max(CYLINDER_ANGLES);
-    minAng = min(CYLINDER_ANGLES);
+    maxAng = max(CYLINDER_ANGLES_i);
+    minAng = min(CYLINDER_ANGLES_i);
     lowA = minAng;
     supA = maxAng;
-    ECM = 100;
-    idx = zeros(1,100);
+    ECM = immse(CYLINDER_ANGLES_i, mean(CYLINDER_ANGLES_i).*ones(1,length(CYLINDER_ANGLES_i))');
+    idx = 1:1:length(CYLINDER_ANGLES_i);
     idxLow = zeros(1,100);
     idxSup = zeros(1,100);
     
-% AGREGAR PARA NO PEGAR SALTOS GRANTES ENTRE POSIBLES MEDICIONES    
-    
-% consideramos que el ang maximo del cilindro permitido es de +-90 grados
-% entre las barras de 0.1m
-%     disp(abs(lowA-supA))
-    if(isempty(CYLINDER_ANGLES))
+
+    if (isempty(CYLINDER_ANGLES))
         CYLINDER = auxCylinder;
         CYLINDER_ANGLES = auxAngCylinder;
+    
     else
-        if (abs(lowA-supA) < 0.13)  % Toma todos los indices (solo esta el cilindro)
-            idx = 1:1:length(CYLINDER_ANGLES);
-        else % Hay mas angulos
-            while (ECM > 1e-3)%
-                
-                splitAng = mean([lowA supA]);
-                diffAng = abs(lowA - supA);
+        idx = 1:1:length(CYLINDER_ANGLES);
+        while (ECM > 1e-3)%
 
-                idxLow = find(CYLINDER_ANGLES_i < splitAng);
-                idxSup = find(CYLINDER_ANGLES_i >= splitAng);
+            splitAng = mean([lowA supA]);
+            diffAng = abs(lowA - supA);
 
-                ecmL = immse(CYLINDER_ANGLES_i(idxLow), mean(CYLINDER_ANGLES_i(idxLow)*ones(1,length(CYLINDER_ANGLES_i(idxLow))))');
-                ecmS = immse(CYLINDER_ANGLES_i(idxSup), mean(CYLINDER_ANGLES_i(idxSup)*ones(1,length(CYLINDER_ANGLES_i(idxSup))))');    
-                if ecmL < ecmS 
-                    ECM = ecmL;
-                    lowA = splitAng - diffAng/2;
-                    supA = splitAng;
-                    idx = idxLow;
-                else
-                    ECM = ecmS;
-                    lowA = splitAng;
-                    supA = splitAng + diffAng/2;
-                    idx = idxSup;
-                end
-                % Se sobreescribe en cada iteracion del while c:
-                CYLINDER_ANGLES = CYLINDER_ANGLES(idx);
-                CYLINDER = CYLINDER(idx);
+            idxLow = find(CYLINDER_ANGLES_i < splitAng);
+            idxSup = find(CYLINDER_ANGLES_i >= splitAng);
+
+            ecmL = immse(CYLINDER_ANGLES_i(idxLow), mean(CYLINDER_ANGLES_i(idxLow)*ones(1,length(CYLINDER_ANGLES_i(idxLow))))');
+            ecmS = immse(CYLINDER_ANGLES_i(idxSup), mean(CYLINDER_ANGLES_i(idxSup)*ones(1,length(CYLINDER_ANGLES_i(idxSup))))');    
+            if ecmL < ecmS 
+                ECM = ecmL;
+                lowA = splitAng - diffAng/2;
+                supA = splitAng;
+                idx = idxLow;
+            else
+                ECM = ecmS;
+                lowA = splitAng;
+                supA = splitAng + diffAng/2;
+                idx = idxSup;
             end
+
+        end
+        CYLINDER_ANGLES = CYLINDER_ANGLES(idx);
+        CYLINDER = CYLINDER(idx);
+        
+        if (justStarted == 1)
+            auxMeanAng = mean(CYLINDER_ANGLES);
+            justStarted = 0;
+        end
+        if (abs(mean(CYLINDER_ANGLES) - auxMeanAng) > deg2rad(15))
+            CYLINDER = auxCylinder;
+            CYLINDER_ANGLES = auxAngCylinder;
         end
     end
+ 
     % agregar IF del g
-    sprintf("idx: %d", length(idx))
+%     sprintf("idx: %d", length(idx))
     auxCylinder = CYLINDER;
     auxAngCylinder = CYLINDER_ANGLES;
-    
-    
+    auxMeanAng = mean(auxAngCylinder);
     polarplot([0 0], [0 0.1], '-*')
     hold on
 %     polarplot(CYLINDER_ANGLES, CYLINDER, '.')
@@ -133,14 +139,57 @@ for i=9200:L
     
 end
 
-%%% ERROR AT 9249
-% Index exceeds the number of array elements (49).
-% 
-% Error in trash (line 105)
-%                 CYLINDER_ANGLES = CYLINDER_ANGLES(idx);
 
+
+  
+%         if (abs(lowA-supA) < 0.13)  % Toma todos los indices (solo esta el cilindro)
+%             idx = 1:1:length(CYLINDER_ANGLES);
+%         else % Hay mas angulos
+%             while (ECM > 1e-3)%
+%                 
+%                 splitAng = mean([lowA supA]);
+%                 diffAng = abs(lowA - supA);
 % 
+%                 idxLow = find(CYLINDER_ANGLES_i < splitAng);
+%                 idxSup = find(CYLINDER_ANGLES_i >= splitAng);
 % 
+%                 ecmL = immse(CYLINDER_ANGLES_i(idxLow), mean(CYLINDER_ANGLES_i(idxLow)*ones(1,length(CYLINDER_ANGLES_i(idxLow))))');
+%                 ecmS = immse(CYLINDER_ANGLES_i(idxSup), mean(CYLINDER_ANGLES_i(idxSup)*ones(1,length(CYLINDER_ANGLES_i(idxSup))))');    
+%                 if ecmL < ecmS 
+%                     ECM = ecmL;
+%                     lowA = splitAng - diffAng/2;
+%                     supA = splitAng;
+%                     idx = idxLow;
+%                 else
+%                     ECM = ecmS;
+%                     lowA = splitAng;
+%                     supA = splitAng + diffAng/2;
+%                     idx = idxSup;
+%                 end
+%                 % Se sobreescribe en cada iteracion del while c:
+%                 
+%             end
+%         end  
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 % X = load('local_trailer_x.mat');
 % X = cell2mat(struct2cell(X));
 % Y = load('local_trailer_y.mat');
