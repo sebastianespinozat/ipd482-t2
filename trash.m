@@ -128,11 +128,15 @@ end
 
 [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
     
+% Concatenar los vectores de datos
+data = [DOLLYANGBUENO', DOLLYBUENO];
 
+% Realizar k-means clustering con k = 3
+[idx, C] = kmeans(data, 3);
 
-
-
-
+% Visualizar los grupos obtenidos
+figure
+scatter(x, y, 10, idx, 'filled')
 
 
 
