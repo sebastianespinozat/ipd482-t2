@@ -9,29 +9,6 @@ L = length(scan);
 rLIM = 1.5;
 angulos = linspace(scan{1}.AngleMin, scan{1}.AngleMax, length(scan{1}.Ranges));
 
-% figure('Name','polar plot')
-% % Mostrar completo
-% for i=1:L/4
-%     polarplot(0,0, '*');
-%     hold on
-%     polarplot(angulos, scan{i}.Ranges, '.')
-%     rlim([0 rLIM])
-%     pause(1e-5)
-%     hold off
-% end
-% Mostrar completo en cartesiano
-% figure('Name','plot')
-% for i=1:L/4
-%     plot(0, 0, '*')
-%     hold on
-%     [x, y] = pol2cart(angulos, (scan{i}.Ranges)');
-%     plot(x,y, '*')
-%     grid on
-%     ylim([-rLIM rLIM])
-%     xlim([-rLIM rLIM])
-%     hold off
-%     pause(1e-5)
-% end
 
 MAX_cylindro = deg2rad(80);%tan(0.4/0.1);
 auxCylinder = zeros(1,1);
@@ -40,7 +17,7 @@ justStarted = 1;
 
 
 figure()
-for i=7400:L
+for i=1:2
 
 
     sprintf("Iteracion: %d", i)
@@ -117,84 +94,57 @@ for i=7400:L
             CYLINDER_ANGLES = auxAngCylinder;
         end
     end
-%     sprintf("L: %d", length(CYLINDER_ANGLES))
-    % agregar IF del g
-%     sprintf("idx: %d", length(idx))
+
     auxCylinder = CYLINDER;
     auxAngCylinder = CYLINDER_ANGLES;
     auxMeanAng = mean(auxAngCylinder);
 
+    
+    indicesDolly = find(SCANCOPY{i}.Ranges > 0.55 & SCANCOPY{i}.Ranges <= 1.4);
+    DOLLY = SCANCOPY{i}.Ranges(indicesDolly);
+    DOLLY_ANGLES = angulos(indicesDolly);
+
+    dollyANG_TOL = pi/4;
+    indicesDolly = find(DOLLY_ANGLES < mean(CYLINDER_ANGLES) + dollyANG_TOL & DOLLY_ANGLES > mean(CYLINDER_ANGLES) - dollyANG_TOL);
+    DOLLYBUENO = DOLLY(indicesDolly);
+    DOLLYANGBUENO = DOLLY_ANGLES(indicesDolly);
+    
+
+    % graficos
+    
     polarplot([0 0], [0 0.1], '-*')
     hold on
-%     polarplot(CYLINDER_ANGLES, CYLINDER, '.')
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')
-    hold on
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')
-%     hold on
+    polarplot(DOLLYANGBUENO, DOLLYBUENO, 'g.')
     polarplot(linspace(0,2*pi,50),ones(50)*0.413)
-    hold on
     polarplot(linspace(0,2*pi,50),ones(50)*0.55)
-    hold on
     rlim([0 1.5])
-    hold on
-%    polarplot(CYLINDER_ANGLES, CYLINDER, '.')
     pause(1e-5)
     hold off
-
     
 end
 
 
+[x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
+    
 
-  
-%         if (abs(lowA-supA) < 0.13)  % Toma todos los indices (solo esta el cilindro)
-%             idx = 1:1:length(CYLINDER_ANGLES);
-%         else % Hay mas angulos
-%             while (ECM > 1e-3)%
-%                 
-%                 splitAng = mean([lowA supA]);
-%                 diffAng = abs(lowA - supA);
-% 
-%                 idxLow = find(CYLINDER_ANGLES_i < splitAng);
-%                 idxSup = find(CYLINDER_ANGLES_i >= splitAng);
-% 
-%                 ecmL = immse(CYLINDER_ANGLES_i(idxLow), mean(CYLINDER_ANGLES_i(idxLow)*ones(1,length(CYLINDER_ANGLES_i(idxLow))))');
-%                 ecmS = immse(CYLINDER_ANGLES_i(idxSup), mean(CYLINDER_ANGLES_i(idxSup)*ones(1,length(CYLINDER_ANGLES_i(idxSup))))');    
-%                 if ecmL < ecmS 
-%                     ECM = ecmL;
-%                     lowA = splitAng - diffAng/2;
-%                     supA = splitAng;
-%                     idx = idxLow;
-%                 else
-%                     ECM = ecmS;
-%                     lowA = splitAng;
-%                     supA = splitAng + diffAng/2;
-%                     idx = idxSup;
-%                 end
-%                 % Se sobreescribe en cada iteracion del while c:
-%                 
-%             end
-%         end  
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%% Comprobacion datos
+
 % X = load('local_trailer_x.mat');
 % X = cell2mat(struct2cell(X));
 % Y = load('local_trailer_y.mat');
