@@ -67,12 +67,16 @@ for i=7400:L
     lowA = minAng;
     supA = maxAng;
     ECM = immse(CYLINDER_ANGLES_i, mean(CYLINDER_ANGLES_i).*ones(1,length(CYLINDER_ANGLES_i))');
+    
+    
     idx = 1:1:length(CYLINDER_ANGLES_i);
     idxLow = zeros(1,100);
     idxSup = zeros(1,100);
     
-
+    
+    
     if (isempty(CYLINDER_ANGLES))
+        
         CYLINDER = auxCylinder;
         CYLINDER_ANGLES = auxAngCylinder;
     
@@ -101,24 +105,25 @@ for i=7400:L
             end
 
         end
-        CYLINDER_ANGLES = CYLINDER_ANGLES(idx);
-        CYLINDER = CYLINDER(idx);
+        CYLINDER_ANGLES = CYLINDER_ANGLES_i(idx);
+        CYLINDER = CYLINDER_i(idx);
         
         if (justStarted == 1)
             auxMeanAng = mean(CYLINDER_ANGLES);
             justStarted = 0;
         end
-        if (abs(mean(CYLINDER_ANGLES) - auxMeanAng) > deg2rad(15))
+        if (abs(mean(CYLINDER_ANGLES) - auxMeanAng) > deg2rad(10) || length(CYLINDER_ANGLES) < 6)
             CYLINDER = auxCylinder;
             CYLINDER_ANGLES = auxAngCylinder;
         end
     end
- 
+%     sprintf("L: %d", length(CYLINDER_ANGLES))
     % agregar IF del g
 %     sprintf("idx: %d", length(idx))
     auxCylinder = CYLINDER;
     auxAngCylinder = CYLINDER_ANGLES;
     auxMeanAng = mean(auxAngCylinder);
+
     polarplot([0 0], [0 0.1], '-*')
     hold on
 %     polarplot(CYLINDER_ANGLES, CYLINDER, '.')
