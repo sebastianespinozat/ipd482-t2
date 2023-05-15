@@ -17,7 +17,7 @@ justStarted = 1;
 
 
 figure()
-for i=1:2
+for i=1:L/10
 
 
     sprintf("Iteracion: %d", i)
@@ -99,8 +99,8 @@ for i=1:2
     auxAngCylinder = CYLINDER_ANGLES;
     auxMeanAng = mean(auxAngCylinder);
 
-    
-    indicesDolly = find(SCANCOPY{i}.Ranges > 0.55 & SCANCOPY{i}.Ranges <= 1.4);
+    % DOLLY 
+    indicesDolly = find(SCANCOPY{i}.Ranges > 0.55 & SCANCOPY{i}.Ranges <= 1.5);
     DOLLY = SCANCOPY{i}.Ranges(indicesDolly);
     DOLLY_ANGLES = angulos(indicesDolly);
 
@@ -109,6 +109,29 @@ for i=1:2
     DOLLYBUENO = DOLLY(indicesDolly);
     DOLLYANGBUENO = DOLLY_ANGLES(indicesDolly);
     
+    X = [DOLLYANGBUENO' DOLLYBUENO];
+    [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
+    Y = [x', y'];
+    
+    [IDX, isnoise] = dbscan(Y, 0.1, 10);
+    bestCluster = 100;
+    for k=1:length(unique(IDX))-1
+        iCluster = Y(IDX == k,:);
+        iModel = fitlm(iCluster(:,1), iCluster(:,2));
+        iCoeff = iModel.Coefficients.Estimate;
+        yi_pred = predict(iModel, iCluster(:,1));
+        iECM = immse(iCluster(:,2), yi_pred);
+
+        if iECM <= bestCluster
+            bestCluster = k;
+        end
+
+    end
+
+
+    straightLine = Y(IDX == bestCluster,:);
+    [thetita,rho] = cart2pol(straightLine(:,1), straightLine(:,2));
+
 
     % graficos
     
@@ -116,7 +139,9 @@ for i=1:2
     hold on
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')
-    polarplot(DOLLYANGBUENO, DOLLYBUENO, 'g.')
+  
+    polarplot(thetita, rho, 'g.')
+    
     polarplot(linspace(0,2*pi,50),ones(50)*0.413)
     polarplot(linspace(0,2*pi,50),ones(50)*0.55)
     rlim([0 1.5])
@@ -126,17 +151,17 @@ for i=1:2
 end
 
 
-[x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
-    
-% Concatenar los vectores de datos
-data = [DOLLYANGBUENO', DOLLYBUENO];
-
-% Realizar k-means clustering con k = 3
-[idx, C] = kmeans(data, 3);
-
-% Visualizar los grupos obtenidos
-figure
-scatter(x, y, 10, idx, 'filled')
+% [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
+%     
+% % Concatenar los vectores de datos
+% data = [DOLLYANGBUENO', DOLLYBUENO];
+% 
+% % Realizar k-means clustering con k = 3
+% [idx, C] = kmeans(data, 3);
+% 
+% % Visualizar los grupos obtenidos
+% figure
+% scatter(x, y, 10, idx, 'filled')
 
 
 
