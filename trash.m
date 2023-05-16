@@ -17,7 +17,7 @@ justStarted = 1;
 
 
 figure()
-for i=400:L
+for i=4700:L
 
 
     sprintf("Iteracion: %d", i)
@@ -104,7 +104,7 @@ for i=400:L
     DOLLY = SCANCOPY{i}.Ranges(indicesDolly);
     DOLLY_ANGLES = angulos(indicesDolly);
 
-    dollyANG_TOL = pi/4;
+    dollyANG_TOL = pi/6;
     indicesDolly = find(DOLLY_ANGLES < mean(CYLINDER_ANGLES) + dollyANG_TOL & DOLLY_ANGLES > mean(CYLINDER_ANGLES) - dollyANG_TOL);
     DOLLYBUENO = DOLLY(indicesDolly);
     DOLLYANGBUENO = DOLLY_ANGLES(indicesDolly);
@@ -121,27 +121,42 @@ for i=400:L
     % % representa a una recta.
     bestClusters = [0 0];
 
+    
     for j=1:length(unique(IDX))-1
         jCluster = Y(IDX == j,:);
         jModel = fitlm(jCluster(:,1), jCluster(:,2));
         jCoeff = fliplr(jModel.Coefficients.Estimate');
-%         modelClas(2,j) = jModel.RMSE;
+%       modelClas(2,j) = jModel.RMSE;
         jR2 = jModel.Rsquared;
         r2Model(2,j) = jR2.Ordinary;
     end
 
-    for k=1:2
-        max_value = max(r2Model(2,:));
-        [max_row, max_col] = find(r2Model == max_value, 1);
-        bestClusters(k) = r2Model(1, max_col);
-        r2Model(:, max_col) = [];
+    if length(unique(IDX)) >= 3
+        for k=1:2
+            max_value = max(r2Model(2,:));
+            [max_row, max_col] = find(r2Model == max_value, 1);
+            bestClusters(k) = r2Model(1, max_col);
+            r2Model(:, max_col) = [];
+        end
+        cluster1 = Y(IDX == bestClusters(1),:);
+        cluster2 = Y(IDX == bestClusters(2),:);
+        [tC1,rC1] = cart2pol(cluster1(:,1), cluster1(:,2));
+        [tC2,rC2] = cart2pol(cluster2(:,1), cluster2(:,2));
+
+    else
+        cluster = Y;
+        [tC,rC] = cart2pol(Y(:,1), Y(:,2));
     end
 
-    cluster1 = Y(IDX == bestClusters(1),:);
-    cluster2 = Y(IDX == bestClusters(2),:);
     
-    [tC1,rC1] = cart2pol(cluster1(:,1), cluster1(:,2));
-    [tC2,rC2] = cart2pol(cluster2(:,1), cluster2(:,2));
+%         cluster = [cluster1 ; cluster2];
+%         [tC,rC] = cart2pol(cluster(:,1), cluster(:,2));
+    
+    
+    
+    
+%     [tC1,rC1] = cart2pol(cluster1(:,1), cluster1(:,2));
+%     [tC2,rC2] = cart2pol(cluster2(:,1), cluster2(:,2));
     
     
     % graficos
@@ -149,9 +164,13 @@ for i=400:L
     hold on
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')
-    hold on
-    polarplot(tC1, rC1, 'm.')
-    polarplot(tC2, rC2, 'c.')
+    
+    if length(unique(IDX)) >= 3
+        polarplot(tC1, rC1, 'm.')
+        polarplot(tC2, rC2, 'c.')
+    else
+        polarplot(tC, rC, 'm.')
+    end
     
     polarplot(linspace(0,2*pi,50),ones(50)*0.413)
     polarplot(linspace(0,2*pi,50),ones(50)*0.55)
