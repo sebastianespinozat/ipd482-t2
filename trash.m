@@ -17,7 +17,7 @@ justStarted = 1;
 
 
 figure()
-for i=1:L/10
+for i=400:L
 
 
     sprintf("Iteracion: %d", i)
@@ -113,34 +113,45 @@ for i=1:L/10
     [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
     Y = [x', y'];
     
-    [IDX, isnoise] = dbscan(Y, 0.1, 10);
-    bestCluster = 100;
-    for k=1:length(unique(IDX))-1
-        iCluster = Y(IDX == k,:);
-        iModel = fitlm(iCluster(:,1), iCluster(:,2));
-        iCoeff = iModel.Coefficients.Estimate;
-        yi_pred = predict(iModel, iCluster(:,1));
-        iECM = immse(iCluster(:,2), yi_pred);
+    [IDX, isnoise] = dbscan(Y, 0.05, 5);
 
-        if iECM <= bestCluster
-            bestCluster = k;
-        end
+    % modelClas = [1:1:length(unique(idx))-1; zeros(1, length(unique(idx))-1)];
+    r2Model = [1:1:length(unique(IDX))-1; zeros(1, length(unique(IDX))-1)]; 
+    % % Considerar r2, es mucho mas robusto c: y demuestra mas que el cluster
+    % % representa a una recta.
+    bestClusters = [0 0];
 
+    for j=1:length(unique(IDX))-1
+        jCluster = Y(IDX == j,:);
+        jModel = fitlm(jCluster(:,1), jCluster(:,2));
+        jCoeff = fliplr(jModel.Coefficients.Estimate');
+%         modelClas(2,j) = jModel.RMSE;
+        jR2 = jModel.Rsquared;
+        r2Model(2,j) = jR2.Ordinary;
     end
 
+    for k=1:2
+        max_value = max(r2Model(2,:));
+        [max_row, max_col] = find(r2Model == max_value, 1);
+        bestClusters(k) = r2Model(1, max_col);
+        r2Model(:, max_col) = [];
+    end
 
-    straightLine = Y(IDX == bestCluster,:);
-    [thetita,rho] = cart2pol(straightLine(:,1), straightLine(:,2));
-
-
-    % graficos
+    cluster1 = Y(IDX == bestClusters(1),:);
+    cluster2 = Y(IDX == bestClusters(2),:);
     
+    [tC1,rC1] = cart2pol(cluster1(:,1), cluster1(:,2));
+    [tC2,rC2] = cart2pol(cluster2(:,1), cluster2(:,2));
+    
+    
+    % graficos
     polarplot([0 0], [0 0.1], '-*')
     hold on
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')
-  
-    polarplot(thetita, rho, 'g.')
+    hold on
+    polarplot(tC1, rC1, 'm.')
+    polarplot(tC2, rC2, 'c.')
     
     polarplot(linspace(0,2*pi,50),ones(50)*0.413)
     polarplot(linspace(0,2*pi,50),ones(50)*0.55)
