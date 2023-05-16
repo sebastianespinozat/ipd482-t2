@@ -5,14 +5,16 @@ load('ang_dolly.mat')
 
 % Coord Cartesianas
 [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
+
+
+X = [DOLLYANGBUENO' DOLLYBUENO];
 lidarData  = [x', y'];
 x = x';
 y = y';
 
 % Regresion Lineal de todos los Datos
-[m, p] = aproximacion(lidarData);
+[m, p] = aproximacion(lidarData, 500);
 y_pred = p+m*x; 
-
 
 % Filtraje puntos con Recta 
 tol = 0.1;
@@ -21,7 +23,7 @@ idx = find(error <= tol);
 A = lidarData(idx,:);
 
 % Nueva Regresion Lineal
-[m1, p1] = aproximacion(A);
+[m1, p1] = aproximacion(A, 50);
 y_pred1 = p1+m1*x; 
 
 
@@ -36,11 +38,10 @@ legend('raw data', 'app 1', 'clean data', 'app 2')
 
 
 
-function [a,b] = aproximacion(datos)    % y = a*x + b
-    numIter = 500;
-    distThresh = 0.01;  % dist max a la recta optima
-    minInliers = 25;    % Minimo Numero de puntos para recta optima
-    error = 1e-2;
+function [a,b] = aproximacion(datos, numIter)    % y = a*x + b
+    distThresh = 0.05;
+    minInliers = 10;
+    error = 1e-1;
 
     % Inicializar las variables para almacenar el mejor modelo y el número máximo de inliers
     bestModel = [];
@@ -61,16 +62,19 @@ function [a,b] = aproximacion(datos)    % y = a*x + b
         % Encontrar los inliers (puntos dentro del umbral de distancia)
         inliers = find(dists <= distThresh);
 
-        % Break (error con bestModel anterior)
-        if ~isempty(bestModel) && sum( abs(bestModel-[m, b])./abs(bestModel)) < error
-            break
-        end
-        
         % Si el número de inliers es mayor que el mínimo requerido y mayor que el máximo actual, actualizar el mejor modelo y el máximo de inliers
-        if length(inliers) > minInliers && length(inliers) > maxInliers            
+        if length(inliers) > minInliers && length(inliers) > maxInliers
+            
+            
+            if i ~= 1 && sum( abs(bestModel-[m, b])  ./abs(bestModel)) <error
+                abs(bestModel-[m ; b])./abs(bestModel)
+            end
+            
             bestModel = [m, b];
             maxInliers = length(inliers);
         end
+        
+        
         
     end
 
