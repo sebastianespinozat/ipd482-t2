@@ -22,10 +22,11 @@ justStarted = 1;
 
 % Parametros Dolly
 m_anterior = 0;
+stateDolly = 'front';
 
 % figure()
 set(figure(),'WindowStyle','docked') % Insert the figure to dock
-for i=7300:L
+for i=4500:L
     sprintf("Iteracion: %d", i)
     
     %######## CILINDRO ##########%
@@ -56,7 +57,7 @@ for i=7300:L
     supA = maxAng;
     ECM = immse(CYLINDER_ANGLES_i, mean(CYLINDER_ANGLES_i).*ones(1,length(CYLINDER_ANGLES_i))');
     
-    idx = 1:1:length(CYLINDER_ANGLES_i);
+    idx = 1:1:length(CYLINDER_ANGLES);
     idxLow = zeros(1,100);
     idxSup = zeros(1,100);
     
@@ -67,7 +68,6 @@ for i=7300:L
         CYLINDER_ANGLES = auxAngCylinder;
     
     else
-        idx = 1:1:length(CYLINDER_ANGLES);
         % Filtrado Cilindro por ECM (divide el angulo en 2 hasta una cota)
         while (ECM > 1e-3)%
 
@@ -111,6 +111,7 @@ for i=7300:L
     % Guardado de cilindro para iteracion siguiente
     auxCylinder = CYLINDER;
     auxAngCylinder = CYLINDER_ANGLES;
+    auxMeanRad = mean(auxCylinder);
     auxMeanAng = mean(auxAngCylinder);
 
     
@@ -136,21 +137,80 @@ for i=7300:L
     y_pred = p+m*x; 
    
     disp(['Error pendienteDOLLY ("k" - "k-1"):  ', num2str(abs(m - m_anterior))]);
+    
     % Verificacion Cara Lateral (error de pendiente)
-    if abs(m - m_anterior) > 0.8    &&  i~=1
-        [m_inf, p_inf] = aproximacion(lidarDataCART(1:floorDiv(lenLidar,2),:), 25);
-        [m_sup, p_sup] = aproximacion(lidarDataCART(floorDiv(lenLidar,2)+1 :end , :), 25);
-        
-        if abs(m_anterior - m_inf) < 0.8
-            m = m_inf;
-            p = p_inf;
+%     if abs(m - m_anterior) > 0.8    &&  i~=1
+%         [m_inf, p_inf] = aproximacion(lidarDataCART(1:floorDiv(lenLidar,2),:), 25);
+%         [m_sup, p_sup] = aproximacion(lidarDataCART(floorDiv(lenLidar,2)+1 :end , :), 25);
+%         
+%         if abs(m_anterior - m_inf) < 0.8
+%             m = m_inf;
+%             p = p_inf;
+%         else
+%             m = m_sup;
+%             p = p_sup;
+%         end
+%         
+%         y_pred = p+m*x;
+%     end
+    
+    % Verificacion Cara Lateral (error de pendiente) (Divide hasta 4 partes)
+%     if abs(m - m_anterior) > 0.8    &&  i~=1
+%         [m_inf, p_inf] = aproximacion(lidarDataCART(1:floorDiv(lenLidar,2),:), 25);
+%         [m_sup, p_sup] = aproximacion(lidarDataCART(floorDiv(lenLidar,2)+1 :end , :), 25);
+%         
+%         if abs(m_anterior - m_inf) < 0.8
+%             m = m_inf;
+%             p = p_inf;
+%         elseif abs(m_anterior - m_sup) < 0.8
+%             m = m_sup;
+%             p = p_sup;
+%         else
+%             [m_inf1, p_inf1] = aproximacion(    lidarDataCART(1:floorDiv(lenLidar,4),   :)                              , floorDiv(25,2));
+%             [m_inf2, p_inf2] = aproximacion(    lidarDataCART(floorDiv(lenLidar,4)+1    :2*floorDiv(lenLidar,4),   :)   , floorDiv(25,2));
+%             [m_sup1, p_sup1] = aproximacion(    lidarDataCART(2*floorDiv(lenLidar,4)+1  :3*floorDiv(lenLidar,4),   :)   , floorDiv(25,2));
+%             [m_sup2, p_sup2] = aproximacion(    lidarDataCART(3*floorDiv(lenLidar,4)+1  :end ,                     :)   , floorDiv(25,2));
+%         
+%             if abs(m_anterior - m_inf1) < 0.8
+%                 m = m_inf1;
+%                 p = p_inf1;
+%             elseif abs(m_anterior - m_inf2) < 0.8
+%                 m = m_inf2;
+%                 p = p_inf2;
+%             elseif abs(m_anterior - m_sup1) < 0.8
+%                 m = m_sup1;
+%                 p = p_sup1;
+%             elseif abs(m_anterior - m_sup2) < 1
+%                 m = m_sup2;
+%                 p = p_sup2;
+%             end
+%         end
+%         y_pred = p+m*x;
+%     end
+    
+    
+    % Identificacion cara lateral (SUPUESTO: se inicia el programa viendo la cara frontal verdadera)
+    if m_anterior*m > -1.5 && m_anterior*m < -0.5 && i ~= 1
+        if contains(stateDolly, 'front')
+           stateDolly = 'lat'; 
         else
-            m = m_sup;
-            p = p_sup;
+            stateDolly = 'front';
         end
-        
-        y_pred = p+m*x;
     end
+    disp(['Cara: ', stateDolly])
+    disp(['front*lat: ', num2str(m_anterior*m)])
+    
+    
+    % Obtencion rectas Lidar y extension a cilindro
+%     [x_cart1, y_cart1] = pol2cart(auxMeanAng,auxMeanRad);
+%     m_aux1 = (0 - y_cart1) / (0 - x_cart1);
+%     b_aux1 = y_cart1 - m_aux1 * x_cart1;
+    radioLinea = 0:0.1:1.5;
+    angLinea1 = ones(length(radioLinea))*max(CYLINDER_ANGLES);
+    angLinea2 = ones(length(radioLinea))*min(CYLINDER_ANGLES);
+    
+    
+    
     
     % Filtraje puntos interes con Recta
     tol = 0.1;
@@ -166,12 +226,20 @@ for i=7300:L
 
     
     %######### GRAFICAS ########%
-    polarplot([0 0], [0 0.1], '-*')
+    polarplot([0 0], [0 0.1], '-*')                 % Lidar
     hold on
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')    % Puntos
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')      % Cilindro
-
-    polarplot(dollyANG, dollyRADIO, 'g.')           % Dolly
+    
+    polarplot(angLinea1, radioLinea, 'r-')   % Linea Lidar al Cilindro
+    polarplot(angLinea2, radioLinea, 'r-')   % Linea Lidar al Cilindro
+    
+    if contains(stateDolly, 'front')
+        polarplot(dollyANG, dollyRADIO, 'g.')         % Dolly
+    else
+        polarplot(dollyANG, dollyRADIO, 'm.')         % Dolly
+    end
+%     polarplot(dollyANG, dollyRADIO, 'g.')           % Dolly
    
     polarplot(linspace(0,2*pi,50),ones(50)*0.413)   % Rango min Cilindro
     polarplot(linspace(0,2*pi,50),ones(50)*0.55)    % Rango max Cilindro
