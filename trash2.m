@@ -20,10 +20,12 @@ auxCylinder = zeros(1,1);
 auxAngCylinder = zeros(1,1);
 justStarted = 1;
 
+% Parametros Dolly
+m_anterior = 0;
 
 % figure()
 set(figure(),'WindowStyle','docked') % Insert the figure to dock
-for i=3000:L
+for i=7300:L
     sprintf("Iteracion: %d", i)
     
     %######## CILINDRO ##########%
@@ -127,19 +129,41 @@ for i=3000:L
     % Coord Cartesianas Puntos Candidatos
     [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO);
     lidarDataCART  = [x, y];
+    lenLidar = length(lidarDataCART);
     
     % Regresion Lineal de todos los Datos
     [m, p] = aproximacion(lidarDataCART, 25);
     y_pred = p+m*x; 
    
-    % Filtraje puntos interes con Recta 
+    disp(['Error pendienteDOLLY ("k" - "k-1"):  ', num2str(abs(m - m_anterior))]);
+    % Verificacion Cara Lateral (error de pendiente)
+    if abs(m - m_anterior) > 0.8    &&  i~=1
+        [m_inf, p_inf] = aproximacion(lidarDataCART(1:floorDiv(lenLidar,2),:), 25);
+        [m_sup, p_sup] = aproximacion(lidarDataCART(floorDiv(lenLidar,2)+1 :end , :), 25);
+        
+        if abs(m_anterior - m_inf) < 0.8
+            m = m_inf;
+            p = p_inf;
+        else
+            m = m_sup;
+            p = p_sup;
+        end
+        
+        y_pred = p+m*x;
+    end
+    
+    % Filtraje puntos interes con Recta
     tol = 0.1;
     error = abs(y_pred - lidarDataCART(:,2));
     idx = find(error <= tol); 
     dollyPOINTS = lidarDataCART(idx,:);
-        
+    
+    % Guardado de pendiente correcta para iteracion siguiente
+    m_anterior = m;
+    
     % Puntos finales a coordenadas Polares
     [dollyANG, dollyRADIO] = cart2pol(dollyPOINTS(:,1), dollyPOINTS(:,2));
+
     
     %######### GRAFICAS ########%
     polarplot([0 0], [0 0.1], '-*')
