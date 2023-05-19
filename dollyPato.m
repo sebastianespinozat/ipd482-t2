@@ -1,30 +1,30 @@
 close all;clear;clc;
 
+%######## DOLLY RECTA CON MAYOR CANTIDAD DE PUNTOS #######%
+
 load('dolly.mat')
 load('ang_dolly.mat')
 
-% Coord Cartesianas
-[x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
-lidarData  = [x', y'];
-x = x';
-y = y';
+% Coord Cartesianas Puntos Candidatos
+[x, y] = pol2cart(DOLLYANGBUENO', DOLLYBUENO);
+lidarData  = [x, y];
 
 % Regresion Lineal de todos los Datos
-[m, p] = aproximacion(lidarData);
+[m, p] = aproximacion(lidarData, 25);
 y_pred = p+m*x; 
 
-
-% Filtraje puntos con Recta 
+% Filtraje puntos interes con Recta 
 tol = 0.1;
 error = abs(y_pred - lidarData(:,2));
 idx = find(error <= tol); 
 A = lidarData(idx,:);
 
 % Nueva Regresion Lineal
-[m1, p1] = aproximacion(A);
+[m1, p1] = aproximacion(A, 25);
 y_pred1 = p1+m1*x; 
 
 
+%######### GRAFICAS ########%
 figure
 plot(x,y, '.')
 hold on
@@ -36,10 +36,10 @@ legend('raw data', 'app 1', 'clean data', 'app 2')
 
 
 
-function [a,b] = aproximacion(datos)    % y = a*x + b
+function [a,b] = aproximacion(datos,minInliers)    % y = a*x + b
     numIter = 500;
     distThresh = 0.01;  % dist max a la recta optima
-    minInliers = 25;    % Minimo Numero de puntos para recta optima
+%     minInliers = 25;    % Minimo Numero de puntos para recta optima
     error = 1e-2;
 
     % Inicializar las variables para almacenar el mejor modelo y el número máximo de inliers

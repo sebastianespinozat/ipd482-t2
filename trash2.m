@@ -2,11 +2,10 @@ clc;clear;close all;
 
 %####### ANALISIS TIEMPO REAL LIDAR #########%
 %####### DETECCION CILINDRO ######%
-%####### DETECCION DOLLY POR CLASIFICACION DE GRUPOS ######%
+%####### DETECCION DOLLY POR CANTIDAD DE PUNTOS EN RECTA ######%
 
 % Carga de datos LIDAR
 bag = rosbag('laser_data.bag');
-% bsel = select(bag, 'Topic', '/scan');
 scan = bag.readMessages('DataFormat', 'struct');
 SCANCOPY = scan;
 
@@ -22,8 +21,9 @@ auxAngCylinder = zeros(1,1);
 justStarted = 1;
 
 
-figure()
-for i=4700:L
+% figure()
+set(figure(),'WindowStyle','docked') % Insert the figure to dock
+for i=3000:L
     sprintf("Iteracion: %d", i)
     
     %######## CILINDRO ##########%
@@ -122,135 +122,91 @@ for i=4700:L
     dollyANG_TOL = pi/6;
     indicesDolly = find(DOLLY_ANGLES < mean(CYLINDER_ANGLES) + dollyANG_TOL & DOLLY_ANGLES > mean(CYLINDER_ANGLES) - dollyANG_TOL);
     DOLLYBUENO = DOLLY(indicesDolly);
-    DOLLYANGBUENO = DOLLY_ANGLES(indicesDolly);
+    DOLLYANGBUENO = DOLLY_ANGLES(indicesDolly)';
     
-    X = [DOLLYANGBUENO' DOLLYBUENO];
-    [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
-    Y = [x', y'];
+    % Coord Cartesianas Puntos Candidatos
+    [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO);
+    lidarDataCART  = [x, y];
     
-    [IDX, isnoise] = dbscan(Y, 0.05, 5);
-
-    % modelClas = [1:1:length(unique(idx))-1; zeros(1, length(unique(idx))-1)];
-    r2Model = [1:1:length(unique(IDX))-1; zeros(1, length(unique(IDX))-1)]; 
-    % % Considerar r2, es mucho mas robusto c: y demuestra mas que el cluster
-    % % representa a una recta.
-    bestClusters = [0 0];
-
+    % Regresion Lineal de todos los Datos
+    [m, p] = aproximacion(lidarDataCART, 25);
+    y_pred = p+m*x; 
+   
+    % Filtraje puntos interes con Recta 
+    tol = 0.1;
+    error = abs(y_pred - lidarDataCART(:,2));
+    idx = find(error <= tol); 
+    dollyPOINTS = lidarDataCART(idx,:);
+        
+    % Puntos finales a coordenadas Polares
+    [dollyANG, dollyRADIO] = cart2pol(dollyPOINTS(:,1), dollyPOINTS(:,2));
     
-    for j=1:length(unique(IDX))-1
-        jCluster = Y(IDX == j,:);
-        jModel = fitlm(jCluster(:,1), jCluster(:,2));
-        jCoeff = fliplr(jModel.Coefficients.Estimate');
-%       modelClas(2,j) = jModel.RMSE;
-        jR2 = jModel.Rsquared;
-        r2Model(2,j) = jR2.Ordinary;
-    end
-
-    if length(unique(IDX)) >= 3
-        for k=1:2
-            max_value = max(r2Model(2,:));
-            [max_row, max_col] = find(r2Model == max_value, 1);
-            bestClusters(k) = r2Model(1, max_col);
-            r2Model(:, max_col) = [];
-        end
-        cluster1 = Y(IDX == bestClusters(1),:);
-        cluster2 = Y(IDX == bestClusters(2),:);
-        [tC1,rC1] = cart2pol(cluster1(:,1), cluster1(:,2));
-        [tC2,rC2] = cart2pol(cluster2(:,1), cluster2(:,2));
-
-    else
-        cluster = Y;
-        [tC,rC] = cart2pol(Y(:,1), Y(:,2));
-    end
-
-    
-%         cluster = [cluster1 ; cluster2];
-%         [tC,rC] = cart2pol(cluster(:,1), cluster(:,2));
-    
-    
-    
-    
-%     [tC1,rC1] = cart2pol(cluster1(:,1), cluster1(:,2));
-%     [tC2,rC2] = cart2pol(cluster2(:,1), cluster2(:,2));
-    
-    
-    % Graficos
+    %######### GRAFICAS ########%
     polarplot([0 0], [0 0.1], '-*')
     hold on
-    polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')
-    polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')
-    
-    if length(unique(IDX)) >= 3
-        polarplot(tC1, rC1, 'm.')
-        polarplot(tC2, rC2, 'c.')
-    else
-        polarplot(tC, rC, 'm.')
-    end
-    
-    polarplot(linspace(0,2*pi,50),ones(50)*0.413)
-    polarplot(linspace(0,2*pi,50),ones(50)*0.55)
-    rlim([0 1.5])
+    polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')    % Puntos
+    polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')      % Cilindro
+
+    polarplot(dollyANG, dollyRADIO, 'g.')           % Dolly
+   
+    polarplot(linspace(0,2*pi,50),ones(50)*0.413)   % Rango min Cilindro
+    polarplot(linspace(0,2*pi,50),ones(50)*0.55)    % Rango max Cilindro
+    rlim([0 1.5])                                   % Rango max Dolly
     pause(1e-5)
     hold off
     
 end
 
 
-% [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO');
-%     
-% % Concatenar los vectores de datos
-% data = [DOLLYANGBUENO', DOLLYBUENO];
-% 
-% % Realizar k-means clustering con k = 3
-% [idx, C] = kmeans(data, 3);
-% 
-% % Visualizar los grupos obtenidos
-% figure
-% scatter(x, y, 10, idx, 'filled')
 
 
 
 
 
+%% Funciones
 
+function [a,b] = aproximacion(datos,minInliers)    % y = a*x + b
+    numIter = 500;
+    distThresh = 0.01;  % dist max a la recta optima
+%     minInliers = 25;    % Minimo Numero de puntos para recta optima
+    error = 1e-2;
 
+    % Inicializar las variables para almacenar el mejor modelo y el número máximo de inliers
+    bestModel = [];
+    maxInliers = 0;
 
+    % Iterar sobre el número de iteraciones
+    for i = 1:numIter
+        % Seleccionar aleatoriamente dos puntos
+        points = datos(randperm(size(datos, 1), 2), :);
 
+        % Calcular la línea que pasa por estos puntos (y = mx + b)
+        m = (points(2, 2) - points(1, 2)) / (points(2, 1) - points(1, 1));
+        b = points(1, 2) - m * points(1, 1);
 
-%% Comprobacion datos
+        % Calcular las distancias de todos los puntos a esta línea
+        dists = abs(m * datos(:, 1) - datos(:, 2) + b) / sqrt(m^2 + 1);
 
-% X = load('local_trailer_x.mat');
-% X = cell2mat(struct2cell(X));
-% Y = load('local_trailer_y.mat');
-% Y = cell2mat(struct2cell(Y));
-% theta = load('local_trailer_theta.mat');
-% theta = cell2mat(struct2cell(theta));
-% LB = 7400;
-% axisLength = 0.62;
-% 
-% figure('name','palo')
-% for i=1:2000
-%     [x11, y11, x12, y12] = axisPos(X(i,1),Y(i,1),theta(i,1), axisLength/2);
-%     [x21, y21, x22, y22] = axisPos(X(i,2),Y(i,2),theta(i,2), axisLength/2);
-%     plot([x11 x12], [y11 y12], '-*', 'MarkerSize',10)
-%     hold on
-%     plot([x21 x22], [y21 y22], '-*','MarkerSize',10)
-%     hold on
-%     plot([X(i,1) X(i,2)], [Y(i,1) Y(i,2)], '-*','MarkerSize',10)
-%     pause(1e-5)
-%     hold off
-%     xlim([-4 4])
-%     ylim([-4 4])
-%     legend('front axis','rear axis', 'core axis')
-% end
-% 
-% 
-% function [x1, y1, x2, y2] = axisPos(x,y,theta, L)
-%     x1 = x - L*sin(theta);
-%     y1 = y - L*cos(theta);
-%     
-%     x2 = x + L*sin(theta);
-%     y2 = y + L*cos(theta);
-% end
-% 
+        % Encontrar los inliers (puntos dentro del umbral de distancia)
+        inliers = find(dists <= distThresh);
 
+        % Break (error con bestModel anterior)
+        if ~isempty(bestModel) && sum( abs(bestModel-[m, b])./abs(bestModel)) < error
+            break
+        end
+        
+        % Si el número de inliers es mayor que el mínimo requerido y mayor que el máximo actual, actualizar el mejor modelo y el máximo de inliers
+        if length(inliers) > minInliers && length(inliers) > maxInliers            
+            bestModel = [m, b];
+            maxInliers = length(inliers);
+        end
+        
+    end
+
+    % Mostrar el mejor modelo y el número máximo de inliers
+    disp(['Best model: y = ', num2str(bestModel(1)), 'x + ', num2str(bestModel(2))]);
+    disp(['Max inliers: ', num2str(maxInliers)]);
+
+    a = bestModel(1);   % m
+    b = bestModel(2);   % b
+end

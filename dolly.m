@@ -1,9 +1,9 @@
 clear;close all;clc
 
+%####### DOLLY CLASIFICACION POR GRUPOS ########%
+
 load('dolly.mat')
 load('ang_dolly.mat')
-
-
 
 
 figure
