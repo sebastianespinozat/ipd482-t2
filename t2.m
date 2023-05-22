@@ -86,15 +86,60 @@ for i=1:3
 end
 
 % 
-% 
-% X = load('local_trailer_x.mat');
-% X = cell2mat(struct2cell(X));
-% Y = load('local_trailer_y.mat');
-% Y = cell2mat(struct2cell(Y));
-% theta = load('local_trailer_theta.mat');
-% theta = cell2mat(struct2cell(theta));
-% LB = 7400;
-% axisLength = 0.62;
+
+X = load('local_trailer_x.mat');
+X = cell2mat(struct2cell(X));
+Y = load('local_trailer_y.mat');
+Y = cell2mat(struct2cell(Y));
+theta = load('local_trailer_theta.mat');
+theta = cell2mat(struct2cell(theta));
+theta = (theta);
+theta = theta(:,1);
+% ERROR DE ESTIMACION Y REFERENCIA
+% err1 = immse(B1(:,1), theta);
+% e1 = abs(B1(:,1) - theta);
+
+figure
+subplot 321
+plot(B1(:,1), '.')
+hold on
+plot(theta, '.')
+legend('Theta 1','ref')
+title('Theta 1')
+xlim([0 1500])
+subplot 322
+plot(abs(B1(:,1)-theta),'.')
+xlim([0 1500])
+title("error angulos")
+subplot 323
+plot(x1, '.')
+hold on
+plot(X(:,1),'.')
+legend('x1','ref')
+xlim([0 1500])
+title('x1')
+subplot 324
+plot(abs(X(:,1)-x1),'.')
+title("error X")
+subplot 325
+subplot 324
+xlim([0 1500])
+subplot 325
+plot(y1, '.')
+hold on; plot(Y(:,1),'.')
+legend('y1','ref')
+xlim([0 1500])
+title('y1')
+subplot 326
+plot(abs(Y(:,1)-y1),'.')
+title("error Y")
+xlim([0 1500])
+
+
+
+
+LB = 7400;
+axisLength = 0.62;
 % 
 % figure('name','palo')
 % for i=1:2000
@@ -121,7 +166,7 @@ end
 %     y2 = y + L*cos(theta);
 % end
 % 
-
+% 
 % step = deg2rad(30);
 % for j=minAng:step:maxAng-step
 % idx = find(CYLINDER_ANGLES >= j & CYLINDER_ANGLES < j+step);

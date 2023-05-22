@@ -24,9 +24,14 @@ justStarted = 1;
 m_anterior = 0;
 stateDolly = 'front';
 
-% figure()
-set(figure(),'WindowStyle','docked') % Insert the figure to dock
-for i=4500:L
+B1 = zeros(L, 2);
+x1 = zeros(L, 1);
+y1 = zeros(L, 1);
+
+staph = 1500;
+ figure()
+% set(figure(),'WindowStyle','docked') % Insert the figure to dock
+for i=1:staph
     sprintf("Iteracion: %d", i)
     
     %######## CILINDRO ##########%
@@ -111,10 +116,33 @@ for i=4500:L
     % Guardado de cilindro para iteracion siguiente
     auxCylinder = CYLINDER;
     auxAngCylinder = CYLINDER_ANGLES;
-    auxMeanRad = mean(auxCylinder);
+%     auxMeanRad = mean(auxCylinder);
     auxMeanAng = mean(auxAngCylinder);
+    meanCylRatio = mean(auxCylinder);
 
     
+    mA = auxAngCylinder(auxCylinder == min(auxCylinder));
+%     [xR, yR] = pol2cart(mA, min(auxCylinder)); 
+    [xR, yR] = pol2cart(auxMeanAng, min(auxCylinder)); 
+    v_1 = [1,0,0] - [0,0,0];
+    v_2 = [xR(1),yR(1),0] - [0.1,0,0];
+    if yR(1) > 0
+        ANGULO_B1 = atan2(norm(cross(v_1, v_2)), dot(v_1, v_2));
+    else
+        ANGULO_B1 = -atan2(norm(cross(v_1, v_2)), dot(v_1, v_2));
+    end
+    
+%     ANGULO_B1 = atan2(norm(cross(v_1, v_2)), dot(v_1, v_2));
+    B1(i,1) = (ANGULO_B1);
+%     B1(i,2) = rad2deg(asin(yR(1)/0.4));  VER COMO ARREGLAR ESTO +- 10�
+%     DIFF
+%     R1 = 1.097-0.4-0.05/2;
+%     x1(i) = xR + (0.647+0.05)*cos(B1(i,1));
+%     y1(i) = yR + (0.647+0.05)*sin(B1(i,1));
+    x1(i) = 0.1+ 1.097*cos(B1(i,1));
+    y1(i) = 1.097*sin(B1(i,1));
+
+
     %######## DOLLY ##########%
     % Filtrado por radio interes de DOLLY
     indicesDolly = find(SCANCOPY{i}.Ranges > 0.55 & SCANCOPY{i}.Ranges <= 1.5);
@@ -136,7 +164,7 @@ for i=4500:L
     [m, p] = aproximacion(lidarDataCART, 25);
     y_pred = p+m*x; 
    
-    disp(['Error pendienteDOLLY ("k" - "k-1"):  ', num2str(abs(m - m_anterior))]);
+%     disp(['Error pendienteDOLLY ("k" - "k-1"):  ', num2str(abs(m - m_anterior))]);
     
     % Verificacion Cara Lateral (error de pendiente)
 %     if abs(m - m_anterior) > 0.8    &&  i~=1
@@ -197,8 +225,8 @@ for i=4500:L
             stateDolly = 'front';
         end
     end
-    disp(['Cara: ', stateDolly])
-    disp(['front*lat: ', num2str(m_anterior*m)])
+%     disp(['Cara: ', stateDolly])
+%     disp(['front*lat: ', num2str(m_anterior*m)])
     
     
     % Obtencion rectas Lidar y extension a cilindro
@@ -208,6 +236,7 @@ for i=4500:L
     radioLinea = 0:0.1:1.5;
     angLinea1 = ones(length(radioLinea))*max(CYLINDER_ANGLES);
     angLinea2 = ones(length(radioLinea))*min(CYLINDER_ANGLES);
+    
     
     
     
@@ -231,9 +260,9 @@ for i=4500:L
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')    % Puntos
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')      % Cilindro
     
-    polarplot(angLinea1, radioLinea, 'r-')   % Linea Lidar al Cilindro
-    polarplot(angLinea2, radioLinea, 'r-')   % Linea Lidar al Cilindro
-    
+%     polarplot(angLinea1, radioLinea, 'r-')   % Linea Lidar al Cilindro
+%     polarplot(angLinea2, radioLinea, 'r-')   % Linea Lidar al Cilindro
+    polarplot([0 auxMeanAng],[0.1 meanCylRatio], '-*')   
     if contains(stateDolly, 'front')
         polarplot(dollyANG, dollyRADIO, 'g.')         % Dolly
     else
@@ -243,13 +272,62 @@ for i=4500:L
    
     polarplot(linspace(0,2*pi,50),ones(50)*0.413)   % Rango min Cilindro
     polarplot(linspace(0,2*pi,50),ones(50)*0.55)    % Rango max Cilindro
-    rlim([0 1.5])                                   % Rango max Dolly
+    rlim([0 0.6])                                   % Rango max Dolly
     pause(1e-5)
     hold off
     
 end
 
 
+
+% Estimacion x1 y1
+X = load('local_trailer_x.mat');
+X = cell2mat(struct2cell(X));
+Y = load('local_trailer_y.mat');
+Y = cell2mat(struct2cell(Y));
+theta = load('local_trailer_theta.mat');
+theta = cell2mat(struct2cell(theta));
+theta = (theta);
+theta = theta(:,1);
+% ERROR DE ESTIMACION Y REFERENCIA
+% err1 = immse(B1(:,1), theta);
+% e1 = abs(B1(:,1) - theta);
+
+figure
+subplot 321
+plot(B1(:,1), '.')
+hold on
+plot(theta, '.')
+legend('Theta 1','ref')
+title('Theta 1')
+xlim([0 staph])
+subplot 322
+plot(abs(B1(:,1)-theta),'.')
+xlim([0 staph])
+title("error angulos")
+subplot 323
+plot(x1, '.')
+hold on
+plot(X(:,1),'.')
+legend('x1','ref')
+xlim([0 staph])
+title('x1')
+subplot 324
+plot(abs(X(:,1)-x1),'.')
+title("error X")
+subplot 325
+subplot 324
+xlim([0 staph])
+subplot 325
+plot(y1, '.')
+hold on; plot(Y(:,1),'.')
+legend('y1','ref')
+xlim([0 staph])
+title('y1')
+subplot 326
+plot(abs(Y(:,1)-y1),'.')
+title("error Y")
+xlim([0 staph])
 
 
 
@@ -296,8 +374,8 @@ function [a,b] = aproximacion(datos,minInliers)    % y = a*x + b
     end
 
     % Mostrar el mejor modelo y el número máximo de inliers
-    disp(['Best model: y = ', num2str(bestModel(1)), 'x + ', num2str(bestModel(2))]);
-    disp(['Max inliers: ', num2str(maxInliers)]);
+%     disp(['Best model: y = ', num2str(bestModel(1)), 'x + ', num2str(bestModel(2))]);
+%     disp(['Max inliers: ', num2str(maxInliers)]);
 
     a = bestModel(1);   % m
     b = bestModel(2);   % b
