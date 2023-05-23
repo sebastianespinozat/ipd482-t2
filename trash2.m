@@ -32,7 +32,7 @@ B2 = zeros(L, 1);
 x2 = zeros(L, 1);
 y2 = zeros(L, 1);
 
-inicio = 6600;
+inicio = 6640;
 staph = 7000;
 %  figure()
 set(figure(),'WindowStyle','docked') % Insert the figure to dock
@@ -166,7 +166,7 @@ for i=inicio:staph
     lenLidar = length(lidarDataCART);
     
     % Regresion Lineal de todos los Datos
-    [m, p] = aproximacion(lidarDataCART, 25);
+    [m, p] = aproximacion(lidarDataCART, 35);
     y_pred = p+m*x; 
    
 %     disp(['Error pendienteDOLLY ("k" - "k-1"):  ', num2str(abs(m - m_anterior))]);
@@ -220,7 +220,7 @@ for i=inicio:staph
 %         end
 %         y_pred = p+m*x;
 %     end
-
+    m_anterior*m
     % Identificacion cara lateral (SUPUESTO: se inicia el programa viendo la cara frontal verdadera)
     if m_anterior*m > -2.5 && m_anterior*m < -0.5 && i ~= 1
 %     if m_anterior*m < -0.5 && i ~= 1
