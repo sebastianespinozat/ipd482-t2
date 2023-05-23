@@ -20,10 +20,10 @@ auxCylinder = zeros(1,1);
 auxAngCylinder = zeros(1,1);
 justStarted = 1;
 
-% Parametros iniciales Dolly
+% Parametros Dolly
 m_anterior = 0;
-stateDolly = 'front';   % 'front' o 'lat'
-    
+stateDolly = 'front';
+
 % Ang y Coord Buscadas
 B1 = zeros(L, 1);
 x1 = zeros(L, 1);
@@ -32,8 +32,8 @@ B2 = zeros(L, 1);
 x2 = zeros(L, 1);
 y2 = zeros(L, 1);
 
-inicio = 6600;
-staph = 7000;
+inicio = 4300;
+staph = 5100;
 %  figure()
 set(figure(),'WindowStyle','docked') % Insert the figure to dock
 for i=inicio:staph
@@ -220,17 +220,19 @@ for i=inicio:staph
 %         end
 %         y_pred = p+m*x;
 %     end
-
+    
+    
     % Identificacion cara lateral (SUPUESTO: se inicia el programa viendo la cara frontal verdadera)
-    if m_anterior*m > -2.5 && m_anterior*m < -0.5 && i ~= 1
-%     if m_anterior*m < -0.5 && i ~= 1
+    if m_anterior*m > -1.5 && m_anterior*m < -0.5 && i ~= 1
         if contains(stateDolly, 'front') 
            stateDolly = 'lat'; 
         else
             stateDolly = 'front';
         end
     end
-          
+        
+%     disp(['Cara: ', stateDolly])   
+    
     % Obtencion rectas Lidar y extension a cilindro
 %     [x_cart1, y_cart1] = pol2cart(auxMeanAng,auxMeanRatio);
 %     m_aux1 = (0 - y_cart1) / (0 - x_cart1);
@@ -247,7 +249,7 @@ for i=inicio:staph
     
     % Guardado de pendiente correcta para iteracion siguiente
     m_anterior = m;
-      
+    
     % Puntos finales a coordenadas Polares
     [dollyANG, dollyRADIO] = cart2pol(dollyPOINTS(:,1), dollyPOINTS(:,2));
 
@@ -258,10 +260,10 @@ for i=inicio:staph
         B2(i,1) = atan(m);
     end
     
-    if i ~= 1 && (B2(i,1) - B2(i-1,1) > pi/2)   % Corrige cambios mayores a 90°
+    if B2(i,1) - B2(i-1,1) > pi/2   && i ~= 1
         B2(i,1) = -pi + B2(i,1);
         disp('CASO CUADRANTE 4')
-    elseif i ~= 1 && (B2(i,1) - B2(i-1,1) < -pi/2)
+    elseif B2(i,1) - B2(i-1,1) < -pi/2      && i ~= 1
         B2(i,1) = pi + B2(i,1);
         disp('CASO CUADRANTE 1')
     end
@@ -379,6 +381,7 @@ subplot 326         % Error Coord y2
 plot(abs(Y(:,2)-y2),'.')
 xlim([inicio staph])
 title("error Y2")
+
 
 
 
