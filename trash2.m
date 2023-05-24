@@ -32,8 +32,8 @@ B2 = zeros(L, 1);
 x2 = zeros(L, 1);
 y2 = zeros(L, 1);
 
-inicio = 6640;
-staph = 7000;
+inicio = 1;
+staph = 7400;
 %  figure()
 set(figure(),'WindowStyle','docked') % Insert the figure to dock
 for i=inicio:staph
@@ -137,7 +137,7 @@ for i=inicio:staph
     end
     
 %     ANGULO_B1 = atan2(norm(cross(v_1, v_2)), dot(v_1, v_2));
-    B1(i,1) = (ANGULO_B1);
+    B1(i) = (ANGULO_B1);
 %     B1(i,2) = rad2deg(asin(yR(1)/0.4));  VER COMO ARREGLAR ESTO +- 10�
 %     DIFF
     % Calculo coordenada x1,y1
@@ -166,7 +166,7 @@ for i=inicio:staph
     lenLidar = length(lidarDataCART);
     
     % Regresion Lineal de todos los Datos
-    [m, p] = aproximacion(lidarDataCART, 35);
+    [m, p] = aproximacion(lidarDataCART, 100);
     y_pred = p+m*x; 
    
 %     disp(['Error pendienteDOLLY ("k" - "k-1"):  ', num2str(abs(m - m_anterior))]);
@@ -220,9 +220,9 @@ for i=inicio:staph
 %         end
 %         y_pred = p+m*x;
 %     end
-    m_anterior*m
+    
     % Identificacion cara lateral (SUPUESTO: se inicia el programa viendo la cara frontal verdadera)
-    if m_anterior*m > -2.5 && m_anterior*m < -0.5 && i ~= 1
+    if m_anterior*m > -2.5 && m_anterior*m < -0.1 && i ~= 1
 %     if m_anterior*m < -0.5 && i ~= 1
         if contains(stateDolly, 'front') 
            stateDolly = 'lat'; 
@@ -230,7 +230,7 @@ for i=inicio:staph
             stateDolly = 'front';
         end
     end
-          
+    
     % Obtencion rectas Lidar y extension a cilindro
 %     [x_cart1, y_cart1] = pol2cart(auxMeanAng,auxMeanRatio);
 %     m_aux1 = (0 - y_cart1) / (0 - x_cart1);
@@ -393,7 +393,8 @@ function [a,b] = aproximacion(datos,minInliers)    % y = a*x + b
     % Inicializar las variables para almacenar el mejor modelo y el numero maximo de inliers
     bestModel = [];
     maxInliers = 0;
-
+    worstModel = [];
+    worstMax = 0;
     % Iterar sobre el numero de iteraciones
     for i = 1:numIter
         % Seleccionar aleatoriamente dos puntos
@@ -414,12 +415,23 @@ function [a,b] = aproximacion(datos,minInliers)    % y = a*x + b
             break
         end
         
+        if length(inliers) > worstMax            
+            worstModel = [m,b];
+            worstMax = length(inliers);
+        end
+        
         % Si el número de inliers es mayor que el mínimo requerido y mayor que el máximo actual, actualizar el mejor modelo y el máximo de inliers
         if length(inliers) > minInliers && length(inliers) > maxInliers            
             bestModel = [m, b];
             maxInliers = length(inliers);
         end
         
+ 
+        if i == numIter
+            if maxInliers == 0
+                bestModel = worstModel;
+            end
+        end
     end
 
     % Mostrar el mejor modelo y el numero maximo de inliers
