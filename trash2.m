@@ -15,7 +15,7 @@ rLIM = 1.5;
 angulos = linspace(scan{1}.AngleMin, scan{1}.AngleMax, length(scan{1}.Ranges));
 
 % Parametros CILINDRO
-MAX_cylindro = deg2rad(80);     %tan(0.4/0.1);
+MAX_cylindro = deg2rad(80);   
 auxCylinder = zeros(1,1);
 auxAngCylinder = zeros(1,1);
 justStarted = 1;
@@ -125,7 +125,7 @@ for i=inicio:staph
     auxMeanAng = mean(auxAngCylinder);
      
     % Calculo angulo Beta1
-    mA = auxAngCylinder(auxCylinder == min(auxCylinder));
+%     mA = auxAngCylinder(auxCylinder == min(auxCylinder));
 %     [xR, yR] = pol2cart(mA, min(auxCylinder)); 
     [xR, yR] = pol2cart(auxMeanAng, min(auxCylinder)); 
     v_1 = [1,0,0] - [0,0,0];
@@ -168,9 +168,7 @@ for i=inicio:staph
     % Regresion Lineal de todos los Datos
     [m, p] = aproximacion(lidarDataCART, 100);
     y_pred = p+m*x; 
-   
-%     disp(['Error pendienteDOLLY ("k" - "k-1"):  ', num2str(abs(m - m_anterior))]);
-    
+       
     % Verificacion Cara Lateral (error de pendiente)
 %     if abs(m - m_anterior) > 0.8    &&  i~=1
 %         [m_inf, p_inf] = aproximacion(lidarDataCART(1:floorDiv(lenLidar,2),:), 25);
@@ -223,7 +221,6 @@ for i=inicio:staph
     
     % Identificacion cara lateral (SUPUESTO: se inicia el programa viendo la cara frontal verdadera)
     if m_anterior*m > -2.5 && m_anterior*m < -0.1 && i ~= 1
-%     if m_anterior*m < -0.5 && i ~= 1
         if contains(stateDolly, 'front') 
            stateDolly = 'lat'; 
         else
@@ -231,14 +228,6 @@ for i=inicio:staph
         end
     end
     
-    % Obtencion rectas Lidar y extension a cilindro
-%     [x_cart1, y_cart1] = pol2cart(auxMeanAng,auxMeanRatio);
-%     m_aux1 = (0 - y_cart1) / (0 - x_cart1);
-%     b_aux1 = y_cart1 - m_aux1 * x_cart1;
-%     radioLinea = 0:0.1:1.5;
-%     angLinea1 = ones(length(radioLinea))*max(CYLINDER_ANGLES);
-%     angLinea2 = ones(length(radioLinea))*min(CYLINDER_ANGLES);
-      
     % Filtraje puntos interes con Recta
     tol = 0.1;
     error = abs(y_pred - lidarDataCART(:,2));
@@ -278,8 +267,6 @@ for i=inicio:staph
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')    % Puntos
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')      % Cilindro
     
-%     polarplot(angLinea1, radioLinea, 'r-')   % Linea Lidar al Cilindro
-%     polarplot(angLinea2, radioLinea, 'r-')   % Linea Lidar al Cilindro
     polarplot([0 auxMeanAng],[0.1 auxMeanRatio], '-')   
     
     if contains(stateDolly, 'front')
@@ -305,9 +292,7 @@ Y = load('local_trailer_y.mat');
 Y = cell2mat(struct2cell(Y));
 theta = load('local_trailer_theta.mat');
 theta = cell2mat(struct2cell(theta));
-% ERROR DE ESTIMACION Y REFERENCIA
-% err1 = immse(B1(:,1), theta);
-% e1 = abs(B1(:,1) - theta);
+
 
 figure
 subplot 321         % Theta 1

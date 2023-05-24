@@ -28,8 +28,8 @@ B2 = zeros(L, 1);
 x2 = zeros(L, 1);
 y2 = zeros(L, 1);
 
-inicio=1;
-staph=1000;
+inicio=4000;
+staph=5500;
 
 % figure()
 set(figure(),'WindowStyle','docked') % Insert the figure to dock
@@ -122,8 +122,6 @@ for i=inicio:staph
     auxMeanAng = mean(auxAngCylinder);
 
     % Calculo angulo Beta1
-%     mA = auxAngCylinder(auxCylinder == min(auxCylinder));
-%     [xR, yR] = pol2cart(mA, min(auxCylinder)); 
     [xR, yR] = pol2cart(auxMeanAng, min(auxCylinder)); 
     v_1 = [1,0,0] - [0,0,0];
     v_2 = [xR(1),yR(1),0] - [0.1,0,0];
@@ -132,9 +130,11 @@ for i=inicio:staph
     else
         ANGULO_B1 = -atan2(norm(cross(v_1, v_2)), dot(v_1, v_2));
     end
-    
     B1(i,1) = (ANGULO_B1);
     
+    % Calculo coordenada x1,y1
+    x1(i) = 0.1+ 1.097*cos(B1(i,1));
+    y1(i) = 1.097*sin(B1(i,1));
     
     
     %######## DOLLY ##########%
@@ -150,149 +150,71 @@ for i=inicio:staph
     DOLLYANGBUENO = DOLLY_ANGLES(indicesDolly)';
     
     % Coord Cartesianas Puntos Candidatos
-%     X = [DOLLYANGBUENO DOLLYBUENO];
     [x, y] = pol2cart(DOLLYANGBUENO, DOLLYBUENO);
-%     Y = [x, y];
-    
+    ptosCandidatosDolly = [x,y];
 
-
-
-%     [IDX, isnoise] = dbscan(Y, 0.05, 5);
-%     [IDX, isnoise] = dbscan(Y, 0.025, 15);
-    % modelClas = [1:1:length(unique(idx))-1; zeros(1, length(unique(idx))-1)];
-%     r2Model = [1:1:length(unique(IDX))-1; zeros(1, length(unique(IDX))-1)]; 
-    % % Considerar r2, es mucho mas robusto c: y demuestra mas que el cluster
-    % % representa a una recta.
-%     bestClusters = [0 0];
-
-    
-%     for j=1:length(unique(IDX))-1
-%         jCluster = Y(IDX == j,:);
-%         jModel = fitlm(jCluster(:,1), jCluster(:,2));
-%         jCoeff = fliplr(jModel.Coefficients.Estimate'); % m, p
-% %       modelClas(2,j) = jModel.RMSE;
-%         jR2 = jModel.Rsquared;
-%         r2Model(2,j) = jR2.Ordinary;
-%     end
-% 
-%     if length(unique(IDX)) >= 3
-%         for k=1:2
-%             max_value = max(r2Model(2,:));
-%             [max_row, max_col] = find(r2Model == max_value, 1);
-%             bestClusters(k) = r2Model(1, max_col);
-%             r2Model(:, max_col) = [];
-%         end
-%         cluster1 = Y(IDX == bestClusters(1),:);
-%         cluster2 = Y(IDX == bestClusters(2),:);
-%         [tC1,rC1] = cart2pol(cluster1(:,1), cluster1(:,2));
-%         [tC2,rC2] = cart2pol(cluster2(:,1), cluster2(:,2));
-%         
-%         mC1 = fitlm(cluster1(:,1), cluster1(:,2));
-%         mC2 = fitlm(cluster2(:,1), cluster2(:,2));
-% 
-%         sprintf("m1: %f",mC1.Coefficients.Estimate(2))
-%         sprintf("m2: %f",mC2.Coefficients.Estimate(2))
-%         
-%         
-%         B2(i) = atan(-1/mean([mC1.Coefficients.Estimate(2) mC2.Coefficients.Estimate(2)])); 
-%     else
-%         cluster = Y;
-%         mC1 = fitlm(cluster(:,1), cluster(:,2));
-%         sprintf("m: %f",mC1.Coefficients.Estimate(2))
-%         B2(i) = atan(-1/mC1.Coefficients.Estimate(2));
-%         
-%         [tC,rC] = cart2pol(Y(:,1), Y(:,2));
-%  
-%     end
-
-  
+    %######################################################################
     % G1
     G1_ind = find(DOLLYANGBUENO > auxMeanAng);
     G1 = DOLLYBUENO(G1_ind);  
     G1_ang = DOLLYANGBUENO(G1_ind);
 
-    [xG1, yG1] = pol2cart(G1_ang, G1');
-    YG1 = [xG1', yG1'];
-    
-    [IDX1, isnoise1] = dbscan(YG1, 0.025, 15);
-    modelClas1 = [1:1:length(unique(IDX1))-1; zeros(1, length(unique(IDX1))-1)];
-    r2Model1 = [1:1:length(unique(IDX1))-1; zeros(1, length(unique(IDX1))-1)]; 
-    % Considerar r2, es mucho mas robusto c: y demuestra mas que el cluster
-    % representa a una recta.
-    bestCluster1 = [0];
-    
-    for j=1:length(unique(IDX1))-1
-        jCluster1 = YG1(IDX1 == j,:);
-        jModel1 = fitlm(jCluster1(:,1), jCluster1(:,2));
-        jCoeff1 = fliplr(jModel1.Coefficients.Estimate'); % m, p
-%       modelClas(2,j) = jModel.RMSE;
-        j1R2 = jModel1.Rsquared;
-        r2Model1(2,j) = j1R2.Ordinary;
-    end
+    [xG1, yG1] = pol2cart(G1_ang, G1);
+    candidatosG1 = [xG1, yG1];
 
-    if length(unique(IDX1)) >= 3    % Dos clusters + ruido
-        max_value = max(r2Model1(2,:));
-        [max_row, max_col] = find(r2Model1 == max_value, 1);
-        bestCluster1 = r2Model1(1, max_col);        
-        cluster1 = YG1(IDX1 == bestCluster1,:);
-    else
-        cluster1 = YG1;%(IDX1==1,:); 
-    end
-    [tC1,rC1] = cart2pol(cluster1(:,1), cluster1(:,2));
-    mC1 = fitlm(cluster1(:,1), cluster1(:,2));
-    sprintf("m: %f",mC1.Coefficients.Estimate(2))
+    % Obtencion recta dolly G1
+    [mDollyG1, bDollyG1] = svdLineFit(candidatosG1);
+    y_predDollyG1 = bDollyG1 + mDollyG1*xG1; 
+
+    % Filtraje puntos G1 interes con Recta 
+    tol = 0.1;
+    errorDollyG1 = abs(y_predDollyG1 - candidatosG1(:,2));
+    idxG1 = find(errorDollyG1 <= tol); 
+    dollyPOINTSG1 = candidatosG1(idxG1,:);
     
-    
+    % Puntos finales a coordenadas Polares G1
+    [dollyANG_G1, dollyRADIO_G1] = cart2pol(dollyPOINTSG1(:,1), dollyPOINTSG1(:,2));
+
+    %######################################################################
     % G2
     G2_ind = find(DOLLYANGBUENO <= auxMeanAng);
     G2 = DOLLYBUENO(G2_ind);  
     G2_ang = DOLLYANGBUENO(G2_ind);
 
+    [xG2, yG2] = pol2cart(G2_ang, G2);
+    candidatosG2 = [xG2, yG2];
 
-    [xG2, yG2] = pol2cart(G2_ang, G2');
-    YG2 = [xG2', yG2'];
+    % Obtencion recta dolly G2
+    [mDollyG2, bDollyG2] = svdLineFit(candidatosG2);
+    y_predDollyG2 = bDollyG2 + mDollyG2*xG2; 
+
+    % Filtraje puntos G2 interes con Recta 
+    tol = 0.1;
+    errorDollyG2 = abs(y_predDollyG2 - candidatosG2(:,2));
+    idxG2 = find(errorDollyG2 <= tol); 
+    dollyPOINTSG2 = candidatosG2(idxG2,:);
     
-    [IDX2, isnoise2] = dbscan(YG2, 0.05, 10);
-    modelClas2 = [1:1:length(unique(IDX2))-1; zeros(1, length(unique(IDX2))-1)];
-    r2Model2 = [1:1:length(unique(IDX2))-1; zeros(1, length(unique(IDX2))-1)]; 
-    % Considerar r2, es mucho mas robusto c: y demuestra mas que el cluster
-    % representa a una recta.
-    bestCluster2 = [0];
+    % Puntos finales a coordenadas Polares G2
+    [dollyANG_G2, dollyRADIO_G2] = cart2pol(dollyPOINTSG2(:,1), dollyPOINTSG2(:,2));
+
+    %######################################################################
     
-    for j=1:length(unique(IDX2))-1
-        jCluster2 = YG2(IDX2 == j,:);
-        jModel2 = fitlm(jCluster2(:,1), jCluster2(:,2));
-        jCoeff2 = fliplr(jModel2.Coefficients.Estimate'); % m, p
-%       modelClas(2,j) = jModel.RMSE;
-        j2R2 = jModel2.Rsquared;
-        r2Model2(2,j) = j2R2.Ordinary;
+    if abs(mDollyG1 - mDollyG2) < 0.2 
+        mPromG = (mDollyG1 + mDollyG2)/2;
+        B2(i,1) = atan(-1/mPromG);
     end
-
-    if length(unique(IDX2)) >= 3    % Dos clusters + ruido
-        max_value = max(r2Model2(2,:));
-        [max_row, max_col] = find(r2Model2 == max_value, 1);
-        bestCluster2 = r2Model2(1, max_col); 
-        cluster2 = YG2(IDX2 == bestCluster2,:);        
-    else
-        cluster2 = YG2;%(IDX2==1,:);
-    end
-    mC2 = fitlm(cluster2(:,1), cluster2(:,2));
-    sprintf("m: %f",mC2.Coefficients.Estimate(2))
-    [tC2,rC2] = cart2pol(cluster2(:,1), cluster2(:,2));
-
-
+    
+   
+    
     
     %####### GRAFICOS #######%
-    polarplot([0 0], [0 0.1], '-*')         % Lidar
+    polarplot([0 0], [0 0.1], '-*')                 % Lidar
     hold on
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')    % Puntos
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')      % Cilindro
 
-    polarplot(G1_ang, G1, '.');
-    polarplot(G2_ang, G2, '.');
-    
-    polarplot(tC1, rC1, 'm.')
-    polarplot(tC2, rC2, 'c.')
+    polarplot(dollyANG_G1, dollyRADIO_G1, 'g.')           % Dolly G1
+    polarplot(dollyANG_G2, dollyRADIO_G2, 'm.')           % Dolly G2
     
     polarplot(linspace(0,2*pi,50),ones(50)*0.413)   % Rango min Cilindro
     polarplot(linspace(0,2*pi,50),ones(50)*0.55)    % Rango max Cilindro
@@ -312,9 +234,7 @@ Y = load('local_trailer_y.mat');
 Y = cell2mat(struct2cell(Y));
 theta = load('local_trailer_theta.mat');
 theta = cell2mat(struct2cell(theta));
-% ERROR DE ESTIMACION Y REFERENCIA
-% err1 = immse(B1(:,1), theta);
-% e1 = abs(B1(:,1) - theta);
+
 
 figure
 subplot 321         % Theta 1
@@ -389,45 +309,6 @@ title("error Y2")
 
 
 
-
-
-
-%% Comprobacion datos
-
-% X = load('local_trailer_x.mat');
-% X = cell2mat(struct2cell(X));
-% Y = load('local_trailer_y.mat');
-% Y = cell2mat(struct2cell(Y));
-% theta = load('local_trailer_theta.mat');
-% theta = cell2mat(struct2cell(theta));
-% LB = 7400;
-% axisLength = 0.62;
-% 
-% figure('name','palo')
-% for i=1:2000
-%     [x11, y11, x12, y12] = axisPos(X(i,1),Y(i,1),theta(i,1), axisLength/2);
-%     [x21, y21, x22, y22] = axisPos(X(i,2),Y(i,2),theta(i,2), axisLength/2);
-%     plot([x11 x12], [y11 y12], '-*', 'MarkerSize',10)
-%     hold on
-%     plot([x21 x22], [y21 y22], '-*','MarkerSize',10)
-%     hold on
-%     plot([X(i,1) X(i,2)], [Y(i,1) Y(i,2)], '-*','MarkerSize',10)
-%     pause(1e-5)
-%     hold off
-%     xlim([-4 4])
-%     ylim([-4 4])
-%     legend('front axis','rear axis', 'core axis')
-% end
-% 
-% 
-% function [x1, y1, x2, y2] = axisPos(x,y,theta, L)
-%     x1 = x - L*sin(theta);
-%     y1 = y - L*cos(theta);
-%     
-%     x2 = x + L*sin(theta);
-%     y2 = y + L*cos(theta);
-% end
-% 
 
 %% Functions
 
