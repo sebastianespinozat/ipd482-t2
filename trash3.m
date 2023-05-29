@@ -28,8 +28,11 @@ B2 = zeros(L, 1);
 x2 = zeros(L, 1);
 y2 = zeros(L, 1);
 
-inicio=4000;
-staph=5500;
+%  Variable cara dolly
+stateDolly = 'Frontal'; % 'esquina Izquierda'/'esquina Derecha'/'Lateral Izquierda'/'Lateral Derecha'
+
+inicio=1;
+staph=L;
 
 % figure()
 set(figure(),'WindowStyle','docked') % Insert the figure to dock
@@ -155,7 +158,7 @@ for i=inicio:staph
 
     %######################################################################
     % G1
-    G1_ind = find(DOLLYANGBUENO > auxMeanAng);
+    G1_ind = find(DOLLYANGBUENO > auxMeanAng+deg2rad(0.8));
     G1 = DOLLYBUENO(G1_ind);  
     G1_ang = DOLLYANGBUENO(G1_ind);
 
@@ -167,7 +170,7 @@ for i=inicio:staph
     y_predDollyG1 = bDollyG1 + mDollyG1*xG1; 
 
     % Filtraje puntos G1 interes con Recta 
-    tol = 0.1;
+    tol = 0.05;
     errorDollyG1 = abs(y_predDollyG1 - candidatosG1(:,2));
     idxG1 = find(errorDollyG1 <= tol); 
     dollyPOINTSG1 = candidatosG1(idxG1,:);
@@ -177,7 +180,7 @@ for i=inicio:staph
 
     %######################################################################
     % G2
-    G2_ind = find(DOLLYANGBUENO <= auxMeanAng);
+    G2_ind = find(DOLLYANGBUENO < auxMeanAng - deg2rad(0.8));
     G2 = DOLLYBUENO(G2_ind);  
     G2_ang = DOLLYANGBUENO(G2_ind);
 
@@ -189,7 +192,7 @@ for i=inicio:staph
     y_predDollyG2 = bDollyG2 + mDollyG2*xG2; 
 
     % Filtraje puntos G2 interes con Recta 
-    tol = 0.1;
+    tol = 0.05;
     errorDollyG2 = abs(y_predDollyG2 - candidatosG2(:,2));
     idxG2 = find(errorDollyG2 <= tol); 
     dollyPOINTSG2 = candidatosG2(idxG2,:);
@@ -199,12 +202,58 @@ for i=inicio:staph
 
     %######################################################################
     
-    if abs(mDollyG1 - mDollyG2) < 0.2 
-        mPromG = (mDollyG1 + mDollyG2)/2;
-        B2(i,1) = atan(-1/mPromG);
-    end
+%     if abs(mDollyG1 - mDollyG2) < 0.2 
+%         mPromG = (mDollyG1 + mDollyG2)/2;
+%         B2(i,1) = atan(-1/mPromG);
+%     end
     
-   
+    
+ 
+    % Angulo y radios de punto max y min de cilindro
+    anguloFiltrajeCaras = 5;
+    angSupDolly = DOLLYANGBUENO(DOLLYANGBUENO>max(CYLINDER_ANGLES)+deg2rad(0.8) & DOLLYANGBUENO<max(CYLINDER_ANGLES)+deg2rad(anguloFiltrajeCaras));
+    radSupDolly = DOLLYBUENO(DOLLYANGBUENO>max(CYLINDER_ANGLES)+deg2rad(0.8) & DOLLYANGBUENO<max(CYLINDER_ANGLES)+deg2rad(anguloFiltrajeCaras));
+    
+    angInfDolly = DOLLYANGBUENO(DOLLYANGBUENO<min(CYLINDER_ANGLES)-deg2rad(0.8) & DOLLYANGBUENO>min(CYLINDER_ANGLES)-deg2rad(anguloFiltrajeCaras));
+    radInfDolly = DOLLYBUENO(DOLLYANGBUENO<min(CYLINDER_ANGLES)-deg2rad(0.8) & DOLLYANGBUENO>min(CYLINDER_ANGLES)-deg2rad(anguloFiltrajeCaras));
+    
+    % Reconocimiento de Caras por radios
+    if mean(radSupDolly)>0.85    &&  mean(radInfDolly)>0.85            
+        stateDolly = 'Frontal';
+    elseif mean(radSupDolly)<0.85    &&  mean(radInfDolly)<0.85
+        if contains(stateDolly, 'esquina Derecha')
+            stateDolly = 'Lateral Derecha';
+            angSupDolly = DOLLYANGBUENO(DOLLYANGBUENO>max(CYLINDER_ANGLES)+deg2rad(0.8) & DOLLYANGBUENO<max(CYLINDER_ANGLES)+deg2rad(2*anguloFiltrajeCaras));
+            radSupDolly = DOLLYBUENO(DOLLYANGBUENO>max(CYLINDER_ANGLES)+deg2rad(0.8) & DOLLYANGBUENO<max(CYLINDER_ANGLES)+deg2rad(2*anguloFiltrajeCaras));
+        elseif contains(stateDolly, 'esquina Izquierda')
+            stateDolly = 'Lateral Izquierda';
+            angInfDolly = DOLLYANGBUENO(DOLLYANGBUENO<min(CYLINDER_ANGLES)-deg2rad(0.8) & DOLLYANGBUENO>min(CYLINDER_ANGLES)-deg2rad(2*anguloFiltrajeCaras));
+            radInfDolly = DOLLYBUENO(DOLLYANGBUENO<min(CYLINDER_ANGLES)-deg2rad(0.8) & DOLLYANGBUENO>min(CYLINDER_ANGLES)-deg2rad(2*anguloFiltrajeCaras));        
+        end
+    elseif mean(radSupDolly)<0.85    &&  mean(radInfDolly)>0.85  
+        stateDolly = 'esquina Derecha';
+        angInfDolly = DOLLYANGBUENO(DOLLYANGBUENO<min(CYLINDER_ANGLES)-deg2rad(0.8) & DOLLYANGBUENO>min(CYLINDER_ANGLES)-deg2rad(2*anguloFiltrajeCaras));
+        radInfDolly = DOLLYBUENO(DOLLYANGBUENO<min(CYLINDER_ANGLES)-deg2rad(0.8) & DOLLYANGBUENO>min(CYLINDER_ANGLES)-deg2rad(2*anguloFiltrajeCaras));
+        
+    elseif mean(radSupDolly)>0.85    &&  mean(radInfDolly)<0.85       
+        stateDolly = 'esquina Izquierda';
+        angSupDolly = DOLLYANGBUENO(DOLLYANGBUENO>max(CYLINDER_ANGLES)+deg2rad(0.8) & DOLLYANGBUENO<max(CYLINDER_ANGLES)+deg2rad(2*anguloFiltrajeCaras));
+        radSupDolly = DOLLYBUENO(DOLLYANGBUENO>max(CYLINDER_ANGLES)+deg2rad(0.8) & DOLLYANGBUENO<max(CYLINDER_ANGLES)+deg2rad(2*anguloFiltrajeCaras));
+        
+    else
+        disp('FALLO')
+    end
+    disp(stateDolly)
+    
+    % Calculo de pendientes para theta2 segun Cara
+    m = pendienteDolly(angSupDolly, radSupDolly, angInfDolly, radInfDolly, stateDolly); 
+    B2(i,1) = atan(m);
+    
+    if i ~= 1 && (B2(i,1) - B2(i-1,1) > pi/2)   % Corrige cambios mayores a 90°
+        B2(i,1) = -pi + B2(i,1);
+    elseif i ~= 1 && (B2(i,1) - B2(i-1,1) < -pi/2)
+        B2(i,1) = pi + B2(i,1);
+    end
     
     
     %####### GRAFICOS #######%
@@ -213,9 +262,12 @@ for i=inicio:staph
     polarplot(angulos, SCANCOPY{i}.Ranges, 'b.')    % Puntos
     polarplot(CYLINDER_ANGLES, CYLINDER, 'r.')      % Cilindro
 
-    polarplot(dollyANG_G1, dollyRADIO_G1, 'g.')           % Dolly G1
-    polarplot(dollyANG_G2, dollyRADIO_G2, 'm.')           % Dolly G2
+%     polarplot(dollyANG_G1, dollyRADIO_G1, 'k.')           % Dolly G1
+%     polarplot(dollyANG_G2, dollyRADIO_G2, 'y.')           % Dolly G2
     
+    polarplot(angSupDolly, radSupDolly, 'm.')
+    polarplot(angInfDolly, radInfDolly, 'g.')
+
     polarplot(linspace(0,2*pi,50),ones(50)*0.413)   % Rango min Cilindro
     polarplot(linspace(0,2*pi,50),ones(50)*0.55)    % Rango max Cilindro
     rlim([0 1.5])                                   % Rango max Dolly
@@ -307,10 +359,42 @@ plot(abs(Y(:,2)-y2),'.')
 xlim([inicio staph])
 title("error Y2")
 
-
+figure         % Theta 2
+plot(B2(:,1), '.')  
+hold on
+plot(theta(:,2), '.')
+legend('\theta_2','ref')
+title('Theta 2 (\theta_2)')
+xlim([inicio staph])
 
 
 %% Functions
+
+function m = pendienteDolly(angSupDolly, radSupDolly, angInfDolly, radInfDolly, stateDolly) 
+    [xSup, ySup] = pol2cart(angSupDolly, radSupDolly);
+    [xInf, yInf] = pol2cart(angInfDolly, radInfDolly);
+    
+    if contains(stateDolly, 'Frontal') 
+%         [m, ~] = svdLineFit([xSup , ySup ;  xInf , yInf]);
+        m = polyfit([xSup ; xInf], [ySup ; yInf], 1);
+        m = -1/m(1);
+    elseif contains(stateDolly, 'Lateral Izquierda') || contains(stateDolly, 'Lateral Derecha')
+%         [m, ~] = svdLineFit([xSup , ySup ;  xInf , yInf]);
+        m = polyfit([xSup ; xInf], [ySup ; yInf], 1);
+        m = m(1);
+    elseif contains(stateDolly, 'esquina Izquierda')
+%         [m, ~] = svdLineFit([xSup, ySup]);
+        m = polyfit(xSup, ySup, 1);
+        m = -1/m(1);
+    elseif contains(stateDolly, 'esquina Derecha')
+%         [m, ~] = svdLineFit([xInf, yInf]);
+        m = polyfit(xInf, yInf, 1);
+        m = -1/m(1);
+    else
+        m = 0;
+    end
+
+end
 
 function [slope, intercept] = svdLineFit(points)
     % Suponemos que 'points' es una matriz nx2 de puntos [x, y]
