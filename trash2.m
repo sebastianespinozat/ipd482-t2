@@ -32,13 +32,16 @@ B2 = zeros(L, 1);
 x2 = zeros(L, 1);
 y2 = zeros(L, 1);
 
+tiempo = zeros(L,1) ; 
+
 inicio = 1;
 staph = 7400;
 %  figure()
 set(figure(),'WindowStyle','docked') % Insert the figure to dock
 for i=inicio:staph
-    sprintf("Iteracion: %d", i)
     
+    sprintf("Iteracion: %d", i)
+    tic
     %######## CILINDRO ##########%
     % Filtrado por radio de CILINDRO
     indicesCilindro = find(SCANCOPY{i}.Ranges >= 0.4123 & SCANCOPY{i}.Ranges <= 0.55);
@@ -168,57 +171,21 @@ for i=inicio:staph
     % Regresion Lineal de todos los Datos
     [m, p] = aproximacion(lidarDataCART, 100);
     y_pred = p+m*x; 
-       
-    % Verificacion Cara Lateral (error de pendiente)
-%     if abs(m - m_anterior) > 0.8    &&  i~=1
-%         [m_inf, p_inf] = aproximacion(lidarDataCART(1:floorDiv(lenLidar,2),:), 25);
-%         [m_sup, p_sup] = aproximacion(lidarDataCART(floorDiv(lenLidar,2)+1 :end , :), 25);
-%         
-%         if abs(m_anterior - m_inf) < 0.8
-%             m = m_inf;
-%             p = p_inf;
-%         else
-%             m = m_sup;
-%             p = p_sup;
-%         end
-%         
-%         y_pred = p+m*x;
-%     end
     
-    % Verificacion Cara Lateral (error de pendiente) (Divide hasta 4 partes)
-%     if abs(m - m_anterior) > 0.8    &&  i~=1
-%         [m_inf, p_inf] = aproximacion(lidarDataCART(1:floorDiv(lenLidar,2),:), 25);
-%         [m_sup, p_sup] = aproximacion(lidarDataCART(floorDiv(lenLidar,2)+1 :end , :), 25);
-%         
-%         if abs(m_anterior - m_inf) < 0.8
-%             m = m_inf;
-%             p = p_inf;
-%         elseif abs(m_anterior - m_sup) < 0.8
-%             m = m_sup;
-%             p = p_sup;
-%         else
-%             [m_inf1, p_inf1] = aproximacion(    lidarDataCART(1:floorDiv(lenLidar,4),   :)                              , floorDiv(25,2));
-%             [m_inf2, p_inf2] = aproximacion(    lidarDataCART(floorDiv(lenLidar,4)+1    :2*floorDiv(lenLidar,4),   :)   , floorDiv(25,2));
-%             [m_sup1, p_sup1] = aproximacion(    lidarDataCART(2*floorDiv(lenLidar,4)+1  :3*floorDiv(lenLidar,4),   :)   , floorDiv(25,2));
-%             [m_sup2, p_sup2] = aproximacion(    lidarDataCART(3*floorDiv(lenLidar,4)+1  :end ,                     :)   , floorDiv(25,2));
-%         
-%             if abs(m_anterior - m_inf1) < 0.8
-%                 m = m_inf1;
-%                 p = p_inf1;
-%             elseif abs(m_anterior - m_inf2) < 0.8
-%                 m = m_inf2;
-%                 p = p_inf2;
-%             elseif abs(m_anterior - m_sup1) < 0.8
-%                 m = m_sup1;
-%                 p = p_sup1;
-%             elseif abs(m_anterior - m_sup2) < 1
-%                 m = m_sup2;
-%                 p = p_sup2;
-%             end
-%         end
-%         y_pred = p+m*x;
-%     end
     
+    
+    % Filtraje puntos interes con Recta
+    tol = 0.01;
+    error = abs(y_pred - lidarDataCART(:,2));
+    idx = find(error <= tol); 
+    dollyPOINTS = lidarDataCART(idx,:);
+
+  
+      
+    % Puntos finales a coordenadas Polares
+    [dollyANG, dollyRADIO] = cart2pol(dollyPOINTS(:,1), dollyPOINTS(:,2));
+    m = RegLineal( dollyANG , dollyRADIO );
+
     % Identificacion cara lateral (SUPUESTO: se inicia el programa viendo la cara frontal verdadera)
     if m_anterior*m > -2.5 && m_anterior*m < -0.1 && i ~= 1
         if contains(stateDolly, 'front') 
@@ -227,18 +194,9 @@ for i=inicio:staph
             stateDolly = 'front';
         end
     end
-    
-    % Filtraje puntos interes con Recta
-    tol = 0.1;
-    error = abs(y_pred - lidarDataCART(:,2));
-    idx = find(error <= tol); 
-    dollyPOINTS = lidarDataCART(idx,:);
-    
-    % Guardado de pendiente correcta para iteracion siguiente
+
+     % Guardado de pendiente correcta para iteracion siguiente
     m_anterior = m;
-      
-    % Puntos finales a coordenadas Polares
-    [dollyANG, dollyRADIO] = cart2pol(dollyPOINTS(:,1), dollyPOINTS(:,2));
 
     % Calculo Beta2
     if contains(stateDolly, 'front')    % Cuando capta cara frontal
@@ -260,7 +218,7 @@ for i=inicio:staph
     x2(i,1) = x1(i) + 0.78*cos(B2(i,1));
     y2(i,1) = y1(i) + 0.78*sin(B2(i,1));
     
-    
+    tiempo(i) = toc ; 
     %######### GRAFICAS ########%
     polarplot([0 0], [0 0.1], '-*')                 % Lidar
     hold on
@@ -425,4 +383,10 @@ function [a,b] = aproximacion(datos,minInliers)    % y = a*x + b
 
     a = bestModel(1);   % m
     b = bestModel(2);   % b
+end
+
+function m = RegLineal(angSupDolly, radSupDolly) 
+    [xSup, ySup] = pol2cart(angSupDolly, radSupDolly);
+        m = polyfit(xSup , ySup, 1);
+        m = m(1) ; 
 end
